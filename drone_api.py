@@ -16,8 +16,7 @@ class Drone_api:
         self.current_pose = PoseStamped()
         self.last_command_pose = None
 
-        self.__thread_state = None
-        self.__thread_move = None
+        self.__thread_command = None
 
         rospy.init_node('drone_offb', anonymous=True, disable_signals=True)
         # get state, position, set position, speeds, mode and arm
@@ -31,50 +30,44 @@ class Drone_api:
         self.__arming_client = rospy.ServiceProxy('mavros/cmd/arming',
                                                   CommandBool)
 
-    def __del__(self):
-        self.finish()
-        # fixme: нужно, но в терминале выдает простыню
-        #rospy.signal_shutdown('Deleting an object Drone_api')
-
     def __state_cb(self, state):
         self.current_state = state
 
     def __local_pos_cb(self, pose):
         self.current_pose = pose
 
-    def __state_target(self):
-        rate = rospy.Rate(1)
+    def __command_target(self):
+        rate = rospy.Rate(20)
+        # Waiting for communication between MAVROS and autopilot
+        while not rospy.is_shutdown() and not self.current_state.connected:
+            try:
+                rate.sleep()
+            except rospy.exceptions.ROSTimeMovedBackwardsException:
+                pass
+        last_request = rospy.Time.now()  # maybe: не нужно
         while self.__started and not rospy.is_shutdown():
             try:
-                if self.current_state.mode != 'OFFBOARD':
-                    self.__set_mode_client(base_mode=0,
-                                           custom_mode='OFFBOARD')
-                else:
-                    if not self.current_state.armed:
+                now = rospy.Time.now()
+                # OFFBOARD and ARM
+                if now - last_request > rospy.Duration(5):
+                    last_request = now
+                    if self.current_state.mode != 'OFFBOARD':
+                        self.__set_mode_client(
+                            base_mode=0, custom_mode='OFFBOARD')
+                    elif not self.current_state.armed:
                         # fixme: дрон бесконечно дизармится, если не взлететь
                         self.__arming_client(True)
-                try:
-                    rate.sleep()
-                except rospy.exceptions.ROSTimeMovedBackwardsException:
-                    pass
-            except rospy.ROSInterruptException:
+                # CONTROL
+                if self.__type_of_move == 'POSE':
+                    self.__local_pos_pub.publish(self.last_command_pose)
+                elif self.__type_of_move == 'SPEED':
+                    pass  # todo: написать управление скоростью
+                rate.sleep()
+            except (rospy.ROSInterruptException, rospy.exceptions.ROSTimeMovedBackwardsException):
                 pass
 
-    def __move_target(self):
-        # The setpoint publishing rate MUST be faster than 2Hz
-        rate = rospy.Rate(20)
-        while self.__started and not rospy.is_shutdown():
-            try:
-                if self.__type_of_move == "POSE":
-                    self.__local_pos_pub.publish(self.last_command_pose)
-                elif self.__type_of_move == "SPEED":
-                    pass  # todo: Добавить управление скоростью
-                try:
-                    rate.sleep()
-                except rospy.exceptions.ROSTimeMovedBackwardsException:
-                    pass
-            except rospy.ROSInterruptException:
-                pass
+    def is_shutdown():
+        return rospy.is_shutdown()
 
     def start(self):
         if not self.__started:
@@ -82,26 +75,15 @@ class Drone_api:
             self.__type_of_move = 'POSE'
             self.last_command_pose = PoseStamped()
             self.last_command_pose.pose.position.z = -3  # started but didn't takeoff
-            rate = rospy.Rate(20)
-            # Waiting for communication between MAVROS and autopilot
-            while not rospy.is_shutdown() and not self.current_state.connected:
-                try:
-                    rate.sleep()
-                except rospy.exceptions.ROSTimeMovedBackwardsException:
-                    pass
-            if self.__thread_state is None or not self.__thread_state.is_alive():
-                self.__thread_state = Thread(target=self.__state_target,
-                                             daemon=True)
-                self.__thread_state.start()
-            if self.__thread_move is None or not self.__thread_move.is_alive():
-                self.__thread_move = Thread(target=self.__move_target,
-                                            daemon=True)
-                self.__thread_move.start()
+
+            if self.__thread_command is None or not self.__thread_command.is_alive():
+                self.__thread_command = Thread(target=self.__command_target,
+                                               daemon=True)
+                self.__thread_command.start()
 
     def finish(self):
         if self.__started:
             self.__started = False
-        rate = rospy.Rate(1)
 
     def set_pose(self, x=None, y=None, z=None, yaw=None):
         new_pose = PoseStamped()
