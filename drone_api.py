@@ -15,10 +15,9 @@ class Drone_api:
         self.current_state = State()
         self.current_pose = PoseStamped()
         self.last_command_pose = None
-
         self.__thread_command = None
 
-        rospy.init_node('drone_offb', anonymous=True, disable_signals=True)
+        rospy.init_node('drone_offb', anonymous=True)
         # get state, position, set position, speeds, mode and arm
         self.__state_sub = rospy.Subscriber('mavros/state', State,
                                             self.__state_cb, queue_size=10)
@@ -44,12 +43,12 @@ class Drone_api:
                 rate.sleep()
             except rospy.exceptions.ROSTimeMovedBackwardsException:
                 pass
-        last_request = rospy.Time.now()  # maybe: не нужно
+        last_request = rospy.Time.now()
         while self.__started and not rospy.is_shutdown():
             try:
                 now = rospy.Time.now()
                 # OFFBOARD and ARM
-                if now - last_request > rospy.Duration(5):
+                if now - last_request > rospy.Duration(3):
                     last_request = now
                     if self.current_state.mode != 'OFFBOARD':
                         self.__set_mode_client(
@@ -63,11 +62,10 @@ class Drone_api:
                 elif self.__type_of_move == 'SPEED':
                     pass  # todo: написать управление скоростью
                 rate.sleep()
-            except (rospy.ROSInterruptException, rospy.exceptions.ROSTimeMovedBackwardsException):
+            except (rospy.exceptions.ROSException,
+                    rospy.exceptions.ROSTimeMovedBackwardsException,
+                    rospy.ROSInterruptException):
                 pass
-
-    def is_shutdown():
-        return rospy.is_shutdown()
 
     def start(self):
         if not self.__started:
@@ -81,9 +79,18 @@ class Drone_api:
                                                daemon=True)
                 self.__thread_command.start()
 
-    def finish(self):
+    def stop(self):
         if self.__started:
             self.__started = False
+
+    def sleep(self, time):
+        try:
+            rospy.sleep(time)
+        except rospy.ROSInterruptException:
+            pass
+
+    def is_shutdown(self):
+        return rospy.is_shutdown()
 
     def set_pose(self, x=None, y=None, z=None, yaw=None):
         new_pose = PoseStamped()
