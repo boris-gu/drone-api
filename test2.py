@@ -1,34 +1,20 @@
-from drone_api import Drone_api
-from time import sleep
+#!/usr/bin/env python3
 
-try:
-    drone = Drone_api()
-    drone.start()
-    drone.set_pose(0, 0, 2)
-    sleep(10)
-    for i in range(2):
-        print('POINT 1', i)
-        drone.set_pose(0, 0, 2)
-        sleep(3)
-        drone.set_pose(yaw=0)
-        sleep(1)
-        print('POINT 2', i)
-        drone.set_pose(4, 0, 6)
-        sleep(3)
-        drone.set_pose(yaw=-90)
-        sleep(1)
-        print('POINT 3', i)
-        drone.set_pose(4, 4, 2)
-        sleep(3)
-        drone.set_pose(yaw=180)
-        sleep(1)
-        print('POINT 4', i)
-        drone.set_pose(0, 4, 6)
-        sleep(3)
-        drone.set_pose(yaw=90)
-        sleep(1)
-    drone.set_pose(0, 0, 2, 0)
-    sleep(10)
-    drone.finish()
-except KeyboardInterrupt:
-    pass
+from drone_api import Drone_api
+
+points = [[0, 0, 2]] + [[0, 0, 2],
+                        [4, 0, 6],
+                        [4, 4, 2],
+                        [0, 4, 6]] * 2 + [[0, 0, 2]]
+yaws = [0] + [90, 0, -90, 180]*2 + [0]
+
+drone = Drone_api()
+drone.start()
+drone.sleep(5)
+for i in range(len(points)):
+    if drone.is_shutdown():
+        break
+    print('POINT ', i)
+    drone.set_pose(*points[i], yaws[i])
+    drone.sleep(5)
+drone.stop()
