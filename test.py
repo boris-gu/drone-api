@@ -6,6 +6,8 @@ try:
     drone = Drone_api()
     drone.start()
     while True:
+        if drone.is_shutdown():
+            break
         x = float(input('Введите x:'))
         y = float(input('Введите y:'))
         z = float(input('Введите z:'))
