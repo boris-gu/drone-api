@@ -12,7 +12,7 @@ try:
         y = float(input('Введите y:'))
         z = float(input('Введите z:'))
         yaw = float(input('Введите yaw:'))
-        drone.set_pose(x, y, z, yaw)
+        drone.set_local_pose(x, y, z, yaw)
         print()
 except ValueError:
     pass
