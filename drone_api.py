@@ -1,5 +1,5 @@
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
@@ -11,24 +11,29 @@ class Drone_api:
     def __init__(self):
         # GENERAL attributes
         self.__started = False
-        self.__type_of_move = None  # 'LOCAL_POSE' or 'SPEED'
+        self.__type_of_move = None  # 'LOCAL_POSE' or 'VELOCITY'
         self.__current_state = State()
         self.__current_pose = PoseStamped()
-
-        # LOCAL_POSE attributes
-        self.__allowable_error = 0.5
-        self.__yaw_head_first = False
-        self.__last_command_pose = None
         self.__thread_command = None
 
+        # LOCAL_POSE attributes
+        self.__allowable_error = 0.5  # m
+        self.__last_command_pose = None
+        self.__yaw_head_first = False
+
+        # VELOCITY attributes
+        self.__last_command_vel = None
+
         rospy.init_node('drone_offb', anonymous=True)
-        # get state, position, set position, speeds, mode and arm
+        # get state, position, set position, velocity, mode and arm
         self.__state_sub = rospy.Subscriber('mavros/state', State,
                                             self.__state_cb, queue_size=10)
         self.__local_pos_sub = rospy.Subscriber('/mavros/local_position/pose',
                                                 PoseStamped, self.__local_pos_cb, queue_size=10)
         self.__local_pos_pub = rospy.Publisher('mavros/setpoint_position/local',
                                                PoseStamped, queue_size=10)
+        self.__local_vel_pub = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped',
+                                               Twist, queue_size=10)
         self.__set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
         self.__arming_client = rospy.ServiceProxy('mavros/cmd/arming',
                                                   CommandBool)
@@ -62,8 +67,8 @@ class Drone_api:
                         self.__arming_client(True)
                 # CONTROL
                 if self.__type_of_move == 'LOCAL_POSE':
-                    _, _, _, y = self.get_pose()
-                    print(y)
+                    """ _, _, _, y = self.get_pose()
+                    print(y) """
                     delta_x = self.__last_command_pose.pose.position.x - \
                         self.__current_pose.pose.position.x
                     delta_y = self.__last_command_pose.pose.position.y - \
@@ -77,8 +82,8 @@ class Drone_api:
                         self.__last_command_pose.pose.orientation.z = q[2]
                         self.__last_command_pose.pose.orientation.w = q[3]
                     self.__local_pos_pub.publish(self.__last_command_pose)
-                elif self.__type_of_move == 'SPEED':
-                    pass  # todo: написать управление скоростью
+                elif self.__type_of_move == 'VELOCITY':
+                    self.__local_vel_pub.publish(self.__last_command_vel)
                 rate.sleep()
             except rospy.exceptions.ROSException:
                 pass
@@ -165,3 +170,21 @@ class Drone_api:
             return True
         else:
             return False
+
+    # VELOCITY velocity methods
+    def set_velocity(self, x: float = 0, y: float = 0, z: float = 0, yaw: float = 0):
+        new_vel = Twist()
+        if x is None:
+            x = self.__last_command_pose.pose.position.x
+        if y is None:
+            y = self.__last_command_pose.pose.position.y
+        if z is None:
+            z = self.__last_command_pose.pose.position.z
+        if yaw is None:
+            yaw = self.__last_command_vel.angular.z
+        new_vel.linear.x = x
+        new_vel.linear.y = y
+        new_vel.linear.z = z
+        new_vel.angular.z = yaw
+        self.__last_command_vel = new_vel
+        self.__type_of_move = 'VELOCITY'
