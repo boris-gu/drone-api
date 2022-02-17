@@ -2,22 +2,24 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
-from tf.transformations import quaternion_from_euler
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from threading import Thread
 from math import pi, atan2, sqrt
 
 
 class Drone_api:
     def __init__(self):
+        # GENERAL attributes
         self.__started = False
-        self.__type_of_move = None  # 'POSE' or 'SPEED'
-        self.__yaw_head_first = False
+        self.__type_of_move = None  # 'LOCAL_POSE' or 'SPEED'
+        self.__current_state = State()
+        self.__current_pose = PoseStamped()
+
+        # LOCAL_POSE attributes
         self.__allowable_error = 0.5
+        self.__yaw_head_first = False
         self.__last_command_pose = None
         self.__thread_command = None
-
-        self.current_state = State()
-        self.current_pose = PoseStamped()
 
         rospy.init_node('drone_offb', anonymous=True)
         # get state, position, set position, speeds, mode and arm
@@ -32,15 +34,15 @@ class Drone_api:
                                                   CommandBool)
 
     def __state_cb(self, state):
-        self.current_state = state
+        self.__current_state = state
 
     def __local_pos_cb(self, pose):
-        self.current_pose = pose
+        self.__current_pose = pose
 
     def __command_target(self):
         rate = rospy.Rate(20)
         # Waiting for communication between MAVROS and autopilot
-        while not rospy.is_shutdown() and not self.current_state.connected:
+        while not rospy.is_shutdown() and not self.__current_state.connected:
             try:
                 rate.sleep()
             except rospy.exceptions.ROSTimeMovedBackwardsException:
@@ -52,18 +54,20 @@ class Drone_api:
                 # OFFBOARD and ARM
                 if now - last_request > rospy.Duration(3):
                     last_request = now
-                    if self.current_state.mode != 'OFFBOARD':
+                    if self.__current_state.mode != 'OFFBOARD':
                         self.__set_mode_client(base_mode=0,
                                                custom_mode='OFFBOARD')
-                    elif not self.current_state.armed:
+                    elif not self.__current_state.armed:
                         # fixme: дрон бесконечно дизармится, если не взлететь
                         self.__arming_client(True)
                 # CONTROL
-                if self.__type_of_move == 'POSE':
+                if self.__type_of_move == 'LOCAL_POSE':
+                    _, _, _, y = self.get_pose()
+                    print(y)
                     delta_x = self.__last_command_pose.pose.position.x - \
-                        self.current_pose.pose.position.x
+                        self.__current_pose.pose.position.x
                     delta_y = self.__last_command_pose.pose.position.y - \
-                        self.current_pose.pose.position.y
+                        self.__current_pose.pose.position.y
                     distance = sqrt((delta_x)**2 + (delta_y)**2)
                     if self.__yaw_head_first and distance > self.__allowable_error:
                         yaw_rad = atan2(delta_y, delta_x)
@@ -79,10 +83,11 @@ class Drone_api:
             except rospy.exceptions.ROSException:
                 pass
 
+    # GENERAL methods
     def start(self):
         if not self.__started:
             self.__started = True
-            self.__type_of_move = 'POSE'
+            self.__type_of_move = 'LOCAL_POSE'
             self.__last_command_pose = PoseStamped()
             self.__last_command_pose.pose.position.z = -3  # started but didn't takeoff
 
@@ -95,7 +100,7 @@ class Drone_api:
         if self.__started:
             self.__started = False
 
-    def sleep(self, time):
+    def sleep(self, time: float):
         try:
             rospy.sleep(time)
         except rospy.ROSInterruptException:
@@ -104,7 +109,27 @@ class Drone_api:
     def is_shutdown(self):
         return rospy.is_shutdown()
 
-    def set_pose(self, x=None, y=None, z=None, yaw=None, yaw_head_first=False):
+    def get_pose(self):
+        x = self.__current_pose.pose.position.x
+        y = self.__current_pose.pose.position.y
+        z = self.__current_pose.pose.position.z
+        yaw_rad = euler_from_quaternion([self.__current_pose.pose.orientation.x,
+                                        self.__current_pose.pose.orientation.y,
+                                        self.__current_pose.pose.orientation.z,
+                                        self.__current_pose.pose.orientation.w])[2]
+        yaw = -yaw_rad * (180/pi)
+        return x, y, z, yaw
+
+    # LOCAL_POSE methods
+    @property
+    def allowable_error(self):
+        return self.__allowable_error
+
+    @allowable_error.setter
+    def allowable_error(self, distance: float):
+        self.__allowable_error = distance
+
+    def set_local_pose(self, x: float = None, y: float = None, z: float = None, yaw: float = None, yaw_head_first: bool = False):
         new_pose = PoseStamped()
         if x is None:
             x = self.__last_command_pose.pose.position.x
@@ -126,4 +151,17 @@ class Drone_api:
             new_pose.pose.orientation.w = q[3]
         self.__last_command_pose = new_pose
         self.__yaw_head_first = yaw_head_first
-        self.__type_of_move = "POSE"
+        self.__type_of_move = 'LOCAL_POSE'
+
+    def point_is_reached(self):
+        delta_x = self.__last_command_pose.pose.position.x - \
+            self.__current_pose.pose.position.x
+        delta_y = self.__last_command_pose.pose.position.y - \
+            self.__current_pose.pose.position.y
+        delta_z = self.__last_command_pose.pose.position.z - \
+            self.__current_pose.pose.position.z
+        distance = sqrt((delta_x)**2 + (delta_y)**2 + (delta_z)**2)
+        if distance < self.__allowable_error:
+            return True
+        else:
+            return False
