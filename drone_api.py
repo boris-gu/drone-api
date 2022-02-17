@@ -67,8 +67,6 @@ class Drone_api:
                         self.__arming_client(True)
                 # CONTROL
                 if self.__type_of_move == 'LOCAL_POSE':
-                    """ _, _, _, y = self.get_pose()
-                    print(y) """
                     delta_x = self.__last_command_pose.pose.position.x - \
                         self.__current_pose.pose.position.x
                     delta_y = self.__last_command_pose.pose.position.y - \
