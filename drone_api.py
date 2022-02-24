@@ -67,10 +67,10 @@ class Drone_api:
                         self.__arming_client(True)
                 # CONTROL
                 if self.__type_of_move == 'LOCAL_POSE':
-                    delta_x = self.__last_command_pose.pose.position.x - \
-                        self.__current_pose.pose.position.x
-                    delta_y = self.__last_command_pose.pose.position.y - \
-                        self.__current_pose.pose.position.y
+                    delta_x = (self.__last_command_pose.pose.position.x
+                               - self.__current_pose.pose.position.x)
+                    delta_y = (self.__last_command_pose.pose.position.y
+                               - self.__current_pose.pose.position.y)
                     distance = sqrt((delta_x)**2 + (delta_y)**2)
                     if self.__yaw_head_first and distance > self.__allowable_error:
                         yaw_rad = atan2(delta_y, delta_x)
@@ -157,12 +157,12 @@ class Drone_api:
         self.__type_of_move = 'LOCAL_POSE'
 
     def point_is_reached(self):
-        delta_x = self.__last_command_pose.pose.position.x - \
-            self.__current_pose.pose.position.x
-        delta_y = self.__last_command_pose.pose.position.y - \
-            self.__current_pose.pose.position.y
-        delta_z = self.__last_command_pose.pose.position.z - \
-            self.__current_pose.pose.position.z
+        delta_x = (self.__last_command_pose.pose.position.x
+                   - self.__current_pose.pose.position.x)
+        delta_y = (self.__last_command_pose.pose.position.y
+                   - self.__current_pose.pose.position.y)
+        delta_z = (self.__last_command_pose.pose.position.z
+                   - self.__current_pose.pose.position.z)
         distance = sqrt((delta_x)**2 + (delta_y)**2 + (delta_z)**2)
         if distance < self.__allowable_error:
             return True
