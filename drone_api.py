@@ -73,8 +73,8 @@ class Drone_api:
                                - self.__current_pose.pose.position.y)
                     distance = sqrt((delta_x)**2 + (delta_y)**2)
                     if self.__yaw_head_first and distance > self.__allowable_error:
-                        yaw_rad = atan2(delta_y, delta_x)
-                        q = quaternion_from_euler(0, 0, yaw_rad)
+                        yaw = atan2(delta_y, delta_x)
+                        q = quaternion_from_euler(0, 0, yaw)
                         self.__last_command_pose.pose.orientation.x = q[0]
                         self.__last_command_pose.pose.orientation.y = q[1]
                         self.__last_command_pose.pose.orientation.z = q[2]
@@ -116,11 +116,11 @@ class Drone_api:
         x = self.__current_pose.pose.position.x
         y = self.__current_pose.pose.position.y
         z = self.__current_pose.pose.position.z
-        yaw_rad = euler_from_quaternion([self.__current_pose.pose.orientation.x,
-                                        self.__current_pose.pose.orientation.y,
-                                        self.__current_pose.pose.orientation.z,
-                                        self.__current_pose.pose.orientation.w])[2]
-        yaw = -yaw_rad * (180/pi)
+        yaw = euler_from_quaternion([self.__current_pose.pose.orientation.x,
+                                     self.__current_pose.pose.orientation.y,
+                                     self.__current_pose.pose.orientation.z,
+                                     self.__current_pose.pose.orientation.w])[2]
+        #yaw = -yaw_rad * (180/pi)
         return x, y, z, yaw
 
     # LOCAL_POSE methods
@@ -146,8 +146,8 @@ class Drone_api:
         if yaw is None:
             new_pose.pose.orientation = self.__last_command_pose.pose.orientation
         else:
-            yaw_rad = -yaw * (pi/180)
-            q = quaternion_from_euler(0, 0, yaw_rad)
+            #yaw_rad = -yaw * (pi/180)
+            q = quaternion_from_euler(0, 0, yaw)
             new_pose.pose.orientation.x = q[0]
             new_pose.pose.orientation.y = q[1]
             new_pose.pose.orientation.z = q[2]
