@@ -112,17 +112,6 @@ class Drone_api:
     def is_shutdown(self):
         return rospy.is_shutdown()
 
-    def get_pose(self):
-        x = self.__current_pose.pose.position.x
-        y = self.__current_pose.pose.position.y
-        z = self.__current_pose.pose.position.z
-        yaw = euler_from_quaternion([self.__current_pose.pose.orientation.x,
-                                     self.__current_pose.pose.orientation.y,
-                                     self.__current_pose.pose.orientation.z,
-                                     self.__current_pose.pose.orientation.w])[2]
-        #yaw = -yaw_rad * (180/pi)
-        return x, y, z, yaw
-
     # LOCAL_POSE methods
     @property
     def allowable_error(self):
@@ -132,7 +121,19 @@ class Drone_api:
     def allowable_error(self, distance: float):
         self.__allowable_error = distance
 
+    def get_local_pose(self):
+        x = self.__current_pose.pose.position.x
+        y = self.__current_pose.pose.position.y
+        z = self.__current_pose.pose.position.z
+        yaw = euler_from_quaternion([self.__current_pose.pose.orientation.x,
+                                     self.__current_pose.pose.orientation.y,
+                                     self.__current_pose.pose.orientation.z,
+                                     self.__current_pose.pose.orientation.w])[2]
+        # todo: pith и roll
+        return x, y, z, yaw
+
     def set_local_pose(self, x: float = None, y: float = None, z: float = None, yaw: float = None, yaw_head_first: bool = False):
+        # todo: исключение, если не запущен
         new_pose = PoseStamped()
         if x is None:
             x = self.__last_command_pose.pose.position.x
@@ -157,6 +158,7 @@ class Drone_api:
         self.__type_of_move = 'LOCAL_POSE'
 
     def point_is_reached(self):
+        # todo: исключение, если не запущен
         delta_x = (self.__last_command_pose.pose.position.x
                    - self.__current_pose.pose.position.x)
         delta_y = (self.__last_command_pose.pose.position.y
@@ -171,6 +173,7 @@ class Drone_api:
 
     # VELOCITY velocity methods
     def set_velocity(self, x: float = 0, y: float = 0, z: float = 0, yaw: float = 0):
+        # todo: исключение, если не запущен
         new_vel = Twist()
         if x is None:
             x = self.__last_command_pose.pose.position.x
