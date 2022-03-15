@@ -1,3 +1,4 @@
+import posixpath
 import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
@@ -125,12 +126,14 @@ class Drone_api:
         x = self.__current_pose.pose.position.x
         y = self.__current_pose.pose.position.y
         z = self.__current_pose.pose.position.z
-        yaw = euler_from_quaternion([self.__current_pose.pose.orientation.x,
-                                     self.__current_pose.pose.orientation.y,
-                                     self.__current_pose.pose.orientation.z,
-                                     self.__current_pose.pose.orientation.w])[2]
-        # todo: pith и roll
-        return x, y, z, yaw
+        angels = euler_from_quaternion([self.__current_pose.pose.orientation.x,
+                                        self.__current_pose.pose.orientation.y,
+                                        self.__current_pose.pose.orientation.z,
+                                        self.__current_pose.pose.orientation.w])
+        roll = angels[0]
+        pitch = angels[1]
+        yaw = angels[2]
+        return x, y, z, roll, pitch, yaw
 
     def set_local_pose(self, x: float = None, y: float = None, z: float = None, yaw: float = None, yaw_head_first: bool = False):
         # todo: исключение, если не запущен
