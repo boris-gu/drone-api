@@ -31,7 +31,7 @@ class Drone_api:
         self.__last_command_global_pose.pose.orientation.w = 1
 
         # VELOCITY attributes
-        self.__last_command_vel = State()
+        self.__last_command_vel = Twist()
 
         rospy.init_node('drone_offb', anonymous=True)
         # get state, position, set position, velocity, mode and arm
@@ -244,17 +244,17 @@ class Drone_api:
         self.__type_of_move = 'GLOBAL_POSE'
 
     # VELOCITY velocity methods
-    def set_velocity(self, x: float = 0, y: float = 0, z: float = 0, yaw: float = 0):
+    def set_velocity(self, x: float = None, y: float = None, z: float = None, yaw: float = None):
         if self.__started == False:
             raise Exception('Drone is not running. '
                             'Please run \'<object_name>.start()\'')
         new_vel = Twist()
         if x is None:
-            x = self.__last_command_local_pose.pose.position.x
+            x = self.__last_command_vel.linear.x
         if y is None:
-            y = self.__last_command_local_pose.pose.position.y
+            y = self.__last_command_vel.linear.y
         if z is None:
-            z = self.__last_command_local_pose.pose.position.z
+            z = self.__last_command_vel.linear.z
         if yaw is None:
             yaw = self.__last_command_vel.angular.z
         new_vel.linear.x = x
