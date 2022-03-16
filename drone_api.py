@@ -136,7 +136,9 @@ class Drone_api:
         return x, y, z, roll, pitch, yaw
 
     def set_local_pose(self, x: float = None, y: float = None, z: float = None, yaw: float = None, yaw_head_first: bool = False):
-        # todo: исключение, если не запущен
+        if self.__started == False:
+            raise Exception('Drone is not running. '
+                            'Please run \'<object_name>.start()\'')
         new_pose = PoseStamped()
         if x is None:
             x = self.__last_command_pose.pose.position.x
@@ -161,7 +163,9 @@ class Drone_api:
         self.__type_of_move = 'LOCAL_POSE'
 
     def point_is_reached(self):
-        # todo: исключение, если не запущен
+        if self.__started == False:
+            raise Exception('Drone is not running. '
+                            'Please run \'<object_name>.start()\'')
         delta_x = (self.__last_command_pose.pose.position.x
                    - self.__current_pose.pose.position.x)
         delta_y = (self.__last_command_pose.pose.position.y
@@ -176,7 +180,9 @@ class Drone_api:
 
     # VELOCITY velocity methods
     def set_velocity(self, x: float = 0, y: float = 0, z: float = 0, yaw: float = 0):
-        # todo: исключение, если не запущен
+        if self.__started == False:
+            raise Exception('Drone is not running. '
+                            'Please run \'<object_name>.start()\'')
         new_vel = Twist()
         if x is None:
             x = self.__last_command_pose.pose.position.x
