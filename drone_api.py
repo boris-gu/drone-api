@@ -187,7 +187,7 @@ class Drone_api:
             new_pose.pose.orientation.y = q[1]
             new_pose.pose.orientation.z = q[2]
             new_pose.pose.orientation.w = q[3]
-        print(new_pose.pose.orientation)
+        # print(new_pose.pose.orientation)
         self.__last_command_local_pose = new_pose
         self.__yaw_head_first = yaw_head_first
         self.__type_of_move = 'LOCAL_POSE'
@@ -238,7 +238,7 @@ class Drone_api:
             new_pose.pose.orientation.y = q[1]
             new_pose.pose.orientation.z = q[2]
             new_pose.pose.orientation.w = q[3]
-        print(new_pose.pose.orientation)
+        # print(new_pose.pose.orientation)
         self.__yaw_head_first = yaw_head_first
         self.__last_command_global_pose = new_pose
         self.__type_of_move = 'GLOBAL_POSE'
