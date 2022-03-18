@@ -1,4 +1,4 @@
-from re import A
+import string
 import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from geographic_msgs.msg import GeoPoseStamped
@@ -8,13 +8,14 @@ from mavros_msgs.srv import CommandBool, SetMode
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from threading import Thread
 from math import pi, atan2, sqrt
+from pygeodesy.geoids import GeoidPGM
 
 
 class Drone_api:
     def __init__(self):
         # GENERAL attributes
         self.__started = False
-        self.__type_of_move = None  # 'LOCAL_POSE' or 'GLOBAL_POSE' or 'VELOCITY'
+        self.__type_of_move = 'LOCAL_POSE'  # 'LOCAL_POSE' or 'GLOBAL_POSE' or 'VELOCITY'
         self.__current_state = State()
         self.__current_local_pose = PoseStamped()
         self.__current_global_pose = NavSatFix()
@@ -24,9 +25,11 @@ class Drone_api:
         # LOCAL_POSE attributes
         self.__allowable_error = 0.5  # m
         self.__last_command_local_pose = PoseStamped()
-        self.__last_command_local_pose.pose.orientation.w = 1  # correct quaternion
 
         # GLOBAL_POSE attributes
+        self.__egm96 = GeoidPGM('/usr/share/GeographicLib/geoids/egm96-5.pgm',
+                                kind=-3)
+        self.__alt_start = None
         self.__last_command_global_pose = GeoPoseStamped()
         self.__last_command_global_pose.pose.orientation.w = 1
 
@@ -121,17 +124,25 @@ class Drone_api:
     # GENERAL methods
     def start(self):
         if not self.__started:
+            self.__last_command_local_pose.pose.position.z = -1  # exclude a takeoff
+            self.__last_command_local_pose.pose.orientation.w = 1  # correct quaternion
             self.__started = True
-            self.__type_of_move = 'LOCAL_POSE'
-
             if self.__thread_command is None or not self.__thread_command.is_alive():
                 self.__thread_command = Thread(target=self.__command_target,
                                                daemon=True)
                 self.__thread_command.start()
+            rospy.sleep(1)
+            self.__last_command_global_pose.pose.position.latitude = self.__current_global_pose.latitude
+            self.__last_command_global_pose.pose.position.longitude = self.__current_global_pose.longitude
+            list_alt = 0
+            for i in range(10):
+                list_alt += self.__current_global_pose.altitude
+                rospy.sleep(0.2)
+            self.__alt_start = list_alt/10
 
     def stop(self):
-        if self.__started:
-            self.__started = False
+        self.__alt_start = None
+        self.__started = False
 
     def sleep(self, time: float):
         try:
@@ -187,7 +198,6 @@ class Drone_api:
             new_pose.pose.orientation.y = q[1]
             new_pose.pose.orientation.z = q[2]
             new_pose.pose.orientation.w = q[3]
-        # print(new_pose.pose.orientation)
         self.__last_command_local_pose = new_pose
         self.__yaw_head_first = yaw_head_first
         self.__type_of_move = 'LOCAL_POSE'
@@ -209,24 +219,44 @@ class Drone_api:
             return False
 
     # GLOBAL_POSE methods
-    def get_global_pose(self):
+    # alt_type'START' or 'SEA' or 'ELLIPSOID'
+    def get_global_pose(self, alt_type: string = 'START'):
+        if alt_type not in ('START', 'SEA', 'ELLIPSOID'):
+            raise ValueError(f'alt_type: \'{alt_type}\'. '
+                             'Correct values: \'START\', \'SEA\', \'ELLIPSOID\'')
         latitude = self.__current_global_pose.latitude
         longitude = self.__current_global_pose.longitude
         altitude = self.__current_global_pose.altitude
+        if alt_type == 'START':
+            altitude -= self.__alt_start
+        elif alt_type == 'SEA':
+            altitude -= self.__egm96.height(latitude, longitude)
+        elif alt_type == 'ELLIPSOID':
+            pass
         return latitude, longitude, altitude
 
     def set_global_pose(self, latitude: float = None, longitude: float = None, altitude: float = None,
-                        yaw: float = None, yaw_head_first: bool = False):
+                        yaw: float = None, yaw_head_first: bool = False, alt_type: string = 'START'):
         if self.__started == False:
             raise Exception('Drone is not running. '
                             'Please run \'<object_name>.start()\'')
+        if alt_type not in ('START', 'SEA', 'ELLIPSOID'):
+            raise ValueError(f'alt_type: \'{alt_type}\'. '
+                             'Correct values: \'START\', \'SEA\', \'ELLIPSOID\'')
         new_pose = GeoPoseStamped()
         if latitude is None:
-            latitude = self.__last_command_global_pose.latitude
+            latitude = self.__last_command_global_pose.pose.position.latitude
         if longitude is None:
-            longitude = self.__last_command_global_pose.longitude
+            longitude = self.__last_command_global_pose.pose.position.longitude
         if altitude is None:
-            altitude = self.__last_command_global_pose.altitude
+            altitude = self.__last_command_global_pose.pose.position.altitude
+        if alt_type == 'START':
+            altitude += self.__alt_start
+            altitude -= self.__egm96.height(latitude, longitude)
+        elif alt_type == 'SEA':
+            pass
+        elif alt_type == 'ELLIPSOID':
+            altitude -= self.__egm96.height(latitude, longitude)
         new_pose.pose.position.latitude = latitude
         new_pose.pose.position.longitude = longitude
         new_pose.pose.position.altitude = altitude
@@ -238,7 +268,6 @@ class Drone_api:
             new_pose.pose.orientation.y = q[1]
             new_pose.pose.orientation.z = q[2]
             new_pose.pose.orientation.w = q[3]
-        # print(new_pose.pose.orientation)
         self.__yaw_head_first = yaw_head_first
         self.__last_command_global_pose = new_pose
         self.__type_of_move = 'GLOBAL_POSE'
