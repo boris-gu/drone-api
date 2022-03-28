@@ -1,4 +1,5 @@
 import rospy
+from cv2 import Rodrigues
 from geometry_msgs.msg import PoseStamped, Twist
 from geographic_msgs.msg import GeoPoseStamped
 from sensor_msgs.msg import NavSatFix
@@ -6,7 +7,7 @@ from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from threading import Thread
-from math import pi, atan2, sqrt
+from math import pi, atan2, sqrt, sin, cos
 from pygeodesy.geoids import GeoidPGM
 
 
@@ -321,3 +322,84 @@ class Drone_api:
         new_vel.angular.z = yaw
         self.__last_command_vel = new_vel
         self.__type_of_move = 'VELOCITY'
+
+
+class Camera_api:
+    def __init__():
+        pass
+
+    @staticmethod
+    def __rvec_to_euler_angles(rvec):
+        rmat = Rodrigues(rvec)[0]
+        sy = sqrt(rmat[0, 0] * rmat[0, 0] + rmat[1, 0] * rmat[1, 0])
+        singular = sy < 1e-6
+
+        if not singular:
+            roll = atan2(-rmat[2, 0], sy)
+            pitch = atan2(rmat[2, 1], rmat[2, 2])
+            yaw = atan2(rmat[1, 0], rmat[0, 0])
+        else:
+            roll = atan2(-rmat[2, 0], sy)
+            pitch = atan2(-rmat[1, 2], rmat[1, 1])
+            yaw = 0
+
+        if pitch > 0:
+            pitch = -pitch + pi
+        else:
+            pitch = -pitch - pi
+        return [-roll, pitch, -yaw]
+
+    @classmethod
+    def marker_pose(cls, rvec, tvec, drone_pose=(0, 0, 0, 0, 0, 0), camera_pose=(0, 0, 0, 0, 0, 0)):
+        """ DRONE/CAMERA POSE: 
+        pose[0] : x
+        pose[1] : y
+        pose[2] : z
+        pose[3] : roll
+        pose[4] : pitch
+        pose[5] : yaw"""
+        # http://mathhelpplanet.com/static.php?p=pryeobrazovaniya-pryamougolnyh-koordinat
+
+        # ROLL PITCH YAW OF MARKER
+        roll, pitch, yaw = cls.__rvec_to_euler_angles(rvec)
+
+        # X Y Z RELATIVE TO CAMERA
+        x = tvec[2]
+        y = -tvec[0]
+        z = -tvec[1]
+        # yaw - Oxy
+        x_new = x*cos(camera_pose[5]) - y*sin(camera_pose[5])
+        y = x*sin(camera_pose[5]) + y*cos(camera_pose[5])
+        x = x_new
+        # pitch - Oxz
+        x_new = x*cos(-camera_pose[4]) - z*sin(-camera_pose[4])
+        z = x*sin(-camera_pose[4]) + z*cos(-camera_pose[4])
+        x = x_new
+        # roll - Oyz
+        y_new = y*cos(camera_pose[3]) - z*sin(camera_pose[3])
+        z = y*sin(camera_pose[3]) + z*cos(camera_pose[3])
+        y = y_new
+        # camera
+        x += camera_pose[0]
+        y += camera_pose[1]
+        z += camera_pose[2]
+
+        # X Y Z RELATIVE TO DRONE
+        # yaw - Oxy
+        x_new = x*cos(drone_pose[5]) - y*sin(drone_pose[5])
+        y = x*sin(drone_pose[5]) + y*cos(drone_pose[5])
+        x = x_new
+        # pitch - Oxz
+        x_new = x*cos(-drone_pose[4]) - z*sin(-drone_pose[4])
+        z = x*sin(-drone_pose[4]) + z*cos(-drone_pose[4])
+        x = x_new
+        # roll - Oyz
+        y_new = y*cos(drone_pose[3]) - z*sin(drone_pose[3])
+        z = y*sin(drone_pose[3]) + z*cos(drone_pose[3])
+        y = y_new
+        # drone
+        x += drone_pose[0]
+        y += drone_pose[1]
+        z += drone_pose[2]
+
+        return x, y, z, roll, pitch, yaw
