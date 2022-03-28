@@ -102,7 +102,7 @@ drone.sleep(5)
 drone.set_local_pose(0, 0, 2, 0)
 while not drone.point_is_reached() and not drone.is_shutdown():
     drone.sleep(0.5)
-marker_pose = [-2, 0, 2, 0, 0, 0]
+marker_pose = [2, 0, 2, 0, 0, 0]
 while not drone.is_shutdown():
     drone_pose = drone.get_local_pose()
     correct_drone_yaw = marker_pose[3] + drone_pose[5]
