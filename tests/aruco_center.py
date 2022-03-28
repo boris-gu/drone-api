@@ -37,7 +37,6 @@ def callback(data):
                                                           distCoeff=dist_coef)
     global marker_pose
     if np.all(ids is not None):
-        # TODO: ПОЧИНИТЬ (возможно только калибровка)
         rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners, 0.2, camera_matrix,
                                                                    dist_coef)
 
