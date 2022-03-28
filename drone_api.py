@@ -126,7 +126,8 @@ class Drone_api:
     def start(self):
         if not self.__started:
             # LOCAL
-            while self.__current_local_pose == None or self.__current_global_pose == None:
+            while not rospy.is_shutdown() and (self.__current_local_pose == None
+                                               or self.__current_global_pose == None):
                 rospy.sleep(0.2)
             self.__last_command_local_pose = PoseStamped()
             self.__last_command_global_pose = GeoPoseStamped()
