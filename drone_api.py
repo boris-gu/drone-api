@@ -351,8 +351,18 @@ class Camera_api:
         return [-roll, pitch, -yaw]
 
     @classmethod
-    def marker_pose(cls, rvec, tvec, drone_pose=(0, 0, 0, 0, 0, 0), camera_pose=(0, 0, 0, 0, 0, 0)):
-        """ DRONE/CAMERA POSE: 
+    def marker_cam_pose(cls, rvec, tvec):
+        # ROLL PITCH YAW OF MARKER
+        roll, pitch, yaw = cls.__rvec_to_euler_angles(rvec)
+        # X Y Z RELATIVE TO CAMERA
+        x = tvec[2]
+        y = -tvec[0]
+        z = -tvec[1]
+        return x, y, z, roll, pitch, yaw
+
+    @classmethod
+    def marker_drone_pose(cls, rvec, tvec, camera_pose=(0, 0, 0, 0, 0, 0)):
+        """CAMERA POSE: 
         pose[0] : x
         pose[1] : y
         pose[2] : z
@@ -360,14 +370,8 @@ class Camera_api:
         pose[4] : pitch
         pose[5] : yaw"""
         # http://mathhelpplanet.com/static.php?p=pryeobrazovaniya-pryamougolnyh-koordinat
-
-        # ROLL PITCH YAW OF MARKER
-        roll, pitch, yaw = cls.__rvec_to_euler_angles(rvec)
-
-        # X Y Z RELATIVE TO CAMERA
-        x = tvec[2]
-        y = -tvec[0]
-        z = -tvec[1]
+        x, y, z, roll, pitch, yaw = cls.marker_cam_pose(rvec, tvec)
+        # X Y Z RELATIVE TO DRONE
         # yaw - Oxy
         x_new = x*cos(camera_pose[5]) - y*sin(camera_pose[5])
         y = x*sin(camera_pose[5]) + y*cos(camera_pose[5])
@@ -384,8 +388,20 @@ class Camera_api:
         x += camera_pose[0]
         y += camera_pose[1]
         z += camera_pose[2]
+        return x, y, z, roll, pitch, yaw
 
-        # X Y Z RELATIVE TO DRONE
+    @classmethod
+    def marker_local_pose(cls, rvec, tvec, drone_pose=(0, 0, 0, 0, 0, 0), camera_pose=(0, 0, 0, 0, 0, 0)):
+        """DRONE/CAMERA POSE: 
+        pose[0] : x
+        pose[1] : y
+        pose[2] : z
+        pose[3] : roll
+        pose[4] : pitch
+        pose[5] : yaw"""
+        x, y, z, roll, pitch, yaw = cls.marker_drone_pose(rvec, tvec,
+                                                          camera_pose)
+        # X Y Z RELATIVE TO LOCAL COORD
         # yaw - Oxy
         x_new = x*cos(drone_pose[5]) - y*sin(drone_pose[5])
         y = x*sin(drone_pose[5]) + y*cos(drone_pose[5])
@@ -402,5 +418,4 @@ class Camera_api:
         x += drone_pose[0]
         y += drone_pose[1]
         z += drone_pose[2]
-
         return x, y, z, roll, pitch, yaw
