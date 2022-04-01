@@ -35,6 +35,7 @@ def callback(data):
                                                           parameters=parameters,
                                                           cameraMatrix=camera_matrix,
                                                           distCoeff=dist_coef)
+    global marker_pose
     if np.all(ids is not None):
         rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners, 0.2, camera_matrix,
                                                                    dist_coef)
@@ -47,8 +48,9 @@ def callback(data):
         cv2.putText(frame, ' id' + str(ids[0])[1:-1], (20, 30), FONT,
                     1, (0, 0, 0), 1, cv2.LINE_AA)
         drone_pose = drone.get_local_pose()
-        x, y, z, roll, pitch, yaw = Camera_api.marker_pose(rvec[0][0], tvec[0][0],
-                                                           drone_pose, (0, 0, -0.05, 0, pi/2, 0))
+        x, y, z, roll, pitch, yaw = Camera_api.marker_local_pose(rvec[0][0], tvec[0][0],
+                                                                 drone_pose, (0, 0, -0.05, 0, pi/2, 0))
+        marker_pose = [x, y, z, roll, pitch, yaw]
         cv2.putText(frame, str(toFixed(x, 3)+'    ' +
                                toFixed(y, 3) + '    ' +
                                toFixed(z, 3) + '    '), (20, 70+20),
@@ -66,6 +68,9 @@ def callback(data):
                                toFixed(yaw, 3)), (20, 100+20),
                     FONT, 1, (0, 0, 0), 1, cv2.LINE_AA)
     else:
+        marker_pose[3] = 0
+        marker_pose[4] = 0
+        marker_pose[5] = 0
         cv2.putText(frame, 'NOT FOUND', (20, 30), FONT,
                     1, (255, 255, 255), 3, cv2.LINE_AA)
         cv2.putText(frame, 'NOT FOUND', (20, 30), FONT,
@@ -81,6 +86,7 @@ camera_matrix, dist_coef = clb.loadCoefficients('calibration_save.yaml')
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 parameters = aruco.DetectorParameters_create()
 
+marker_pose = [0, 0, 0, 0, 0, 0]
 drone = Drone_api()
 drone.start()
 rospy.loginfo('Drone armed')
@@ -92,8 +98,19 @@ image_pub = rospy.Publisher('/iris_bottom_fpv/usb_cam/location_img',
 rospy.loginfo('Start Publisher')
 
 drone.sleep(5)
-drone.set_local_pose(10, 10, 5, 0)
+drone.set_local_pose(0, 0, 5, 0)
+while not drone.point_is_reached() and not drone.is_shutdown():
+    drone.sleep(0.5)
+marker_pose = [0, 0, 0, 0, 0, 0]
+current_drone_x = 0
+current_drone_y = 0
 while not drone.is_shutdown():
+    drone_pose = drone.get_local_pose()
+    current_drone_x = (current_drone_x + marker_pose[0])/2
+    current_drone_y = (current_drone_y + marker_pose[1])/2
+    correct_drone_yaw = marker_pose[5] + drone_pose[5]
+    drone.set_local_pose(current_drone_x, current_drone_y,
+                         marker_pose[2] + 4, correct_drone_yaw)
     drone.sleep(0.5)
 drone.stop()
 rospy.loginfo('Drone disarmed')

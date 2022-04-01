@@ -48,8 +48,8 @@ def callback(data):
         cv2.putText(frame, ' id' + str(ids[0])[1:-1], (20, 30), FONT,
                     1, (0, 0, 0), 1, cv2.LINE_AA)
         drone_pose = drone.get_local_pose()
-        x, y, z, roll, pitch, yaw = Camera_api.marker_pose(rvec[0][0], tvec[0][0],
-                                                           drone_pose)
+        x, y, z, roll, pitch, yaw = Camera_api.marker_local_pose(rvec[0][0], tvec[0][0],
+                                                                 drone_pose)
         marker_pose = [x, y, z, roll, pitch, yaw]
         cv2.putText(frame, str(toFixed(x, 3)+'    ' +
                                toFixed(y, 3) + '    ' +
