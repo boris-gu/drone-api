@@ -2,11 +2,6 @@
 
 from drone_api import Drone_api
 
-""" points = [[0, 0, 2]] + [[0, 0, 2],
-                        [4, 0, 6],
-                        [20, 4, 2],
-                        [0, 4, 20]] * 2 + [[0, 0, 2]] """
-
 points = [[0, 0, 2]] + [[0, 0, 2],
                         [4, 0, 6],
                         [4, 4, 2],
@@ -21,4 +16,3 @@ for i in range(len(points)):
     drone.set_local_pose(*points[i], yaw_head_first=True)
     while not drone.point_is_reached() and not drone.is_shutdown():
         drone.sleep(0.2)
-drone.stop()

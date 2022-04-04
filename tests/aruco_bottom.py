@@ -23,6 +23,7 @@ def toFixed(numObj, digits=0):
 
 
 def callback(data):
+    # Мост для преобразования изображения из формата ROS в формат OpenCV
     bridge = CvBridge()
     try:
         frame = bridge.imgmsg_to_cv2(data, 'bgr8')
@@ -51,6 +52,7 @@ def callback(data):
         x, y, z, roll, pitch, yaw = Camera_api.marker_local_pose(rvec[0][0], tvec[0][0],
                                                                  drone_pose, (0, 0, -0.05, 0, pi/2, 0))
         marker_pose = [x, y, z, roll, pitch, yaw]
+        # Белая обводка и черный текст
         cv2.putText(frame, str(toFixed(x, 3)+'    ' +
                                toFixed(y, 3) + '    ' +
                                toFixed(z, 3) + '    '), (20, 70+20),
@@ -68,8 +70,7 @@ def callback(data):
                                toFixed(yaw, 3)), (20, 100+20),
                     FONT, 1, (0, 0, 0), 1, cv2.LINE_AA)
     else:
-        marker_pose[3] = 0
-        marker_pose[4] = 0
+        # Сбрасываем yaw маркера, чтобы, в случае потери маркера, дрон не продолжал кружиться
         marker_pose[5] = 0
         cv2.putText(frame, 'NOT FOUND', (20, 30), FONT,
                     1, (255, 255, 255), 3, cv2.LINE_AA)
@@ -101,16 +102,18 @@ drone.sleep(5)
 drone.set_local_pose(0, 0, 5, 0)
 while not drone.point_is_reached() and not drone.is_shutdown():
     drone.sleep(0.5)
+# Т.к. после закрытия топика с изображением сохраняется последний кадр,
+# необходимо перед стартом основной части скрипта "сбросить" значения маркера
 marker_pose = [0, 0, 0, 0, 0, 0]
 current_drone_x = 0
 current_drone_y = 0
 while not drone.is_shutdown():
     drone_pose = drone.get_local_pose()
+    # Чтобы исключить "дерганье" дрона из-за небольшой ошибки определения местоположения маркера:
     current_drone_x = (current_drone_x + marker_pose[0])/2
     current_drone_y = (current_drone_y + marker_pose[1])/2
     correct_drone_yaw = marker_pose[5] + drone_pose[5]
     drone.set_local_pose(current_drone_x, current_drone_y,
                          marker_pose[2] + 4, correct_drone_yaw)
     drone.sleep(0.5)
-drone.stop()
 rospy.loginfo('Drone disarmed')

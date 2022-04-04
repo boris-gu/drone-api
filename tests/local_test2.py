@@ -18,4 +18,3 @@ for i in range(len(points)):
     print('POINT ', i)
     drone.set_local_pose(*points[i], yaws[i])
     drone.sleep(5)
-drone.stop()

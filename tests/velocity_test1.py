@@ -29,4 +29,3 @@ for i in range(len(vel_x)):
         break
     drone.set_velocity(vel_x[i], vel_y[i], vel_z_down)
     drone.sleep(0.1)
-drone.stop()
