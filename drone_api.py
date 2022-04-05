@@ -233,9 +233,8 @@ class Drone_api:
         self.__type_of_move = 'LOCAL_POSE'
 
     def point_is_reached(self):
-        if self.__started == False:
-            raise Exception('Drone is not running. '
-                            'Please run \'<object_name>.start()\'')
+        if self.is_shutdown() or self.__started == False or self.__type_of_move != 'LOCAL_POSE':
+            return True
         delta_x = (self.__last_command_local_pose.pose.position.x
                    - self.__current_local_pose.pose.position.x)
         delta_y = (self.__last_command_local_pose.pose.position.y
