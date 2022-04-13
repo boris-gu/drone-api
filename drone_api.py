@@ -257,7 +257,10 @@ class Drone_api:
         longitude = self.__current_global_pose.longitude
         altitude = self.__current_global_pose.altitude
         if alt_type == 'START':
-            altitude -= self.__start_alt
+            if self.__started == False:
+                altitude = 0
+            else:
+                altitude -= self.__start_alt
         elif alt_type == 'SEA':
             altitude -= self.__egm96.height(latitude, longitude)
         elif alt_type == 'ELLIPSOID':
