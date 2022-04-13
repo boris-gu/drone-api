@@ -23,7 +23,7 @@ class Drone_api:
         # LOCAL_POSE attributes
         self.__allowable_error = allowable_error  # m
         self.__redefine_zero_point = redefine_zero_point
-        self.__start_xyz = None
+        self.__start_xyz = (0, 0, 0)  # None
         self.__current_local_pose = None
         self.__last_command_local_pose = None
 
@@ -248,7 +248,7 @@ class Drone_api:
             return False
 
     # GLOBAL_POSE methods
-    # alt_type'START' or 'SEA' or 'ELLIPSOID'
+    # alt_type: 'START', 'SEA' or 'ELLIPSOID'
     def get_global_pose(self, alt_type: str = 'START'):
         if alt_type not in ('START', 'SEA', 'ELLIPSOID'):
             raise ValueError(f'alt_type: \'{alt_type}\'. '
@@ -322,6 +322,24 @@ class Drone_api:
         new_vel.angular.z = yaw
         self.__last_command_vel = new_vel
         self.__type_of_move = 'VELOCITY'
+
+
+class Telemerty_api:
+    def __init__(self):
+        # GENERAL attributes
+        self.__state = State()
+
+        rospy.init_node('drone_offb', anonymous=True)
+        # get state, position, set position, velocity, mode and arm
+        self.__state_sub = rospy.Subscriber('mavros/state', State,
+                                            self.__state_cb, queue_size=10)
+
+    def __state_cb(self, state):
+        self.__state = state
+
+    @property
+    def state(self):
+        return self.__state
 
 
 class Camera_api:
