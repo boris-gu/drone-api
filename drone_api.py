@@ -168,13 +168,15 @@ class Drone_api:
         self.__start_alt = None
         self.__started = False
 
-    def sleep(self, time: float):
+    @staticmethod
+    def sleep(time: float):
         try:
             rospy.sleep(time)
         except rospy.ROSInterruptException:
             pass
 
-    def is_shutdown(self):
+    @staticmethod
+    def is_shutdown():
         return rospy.is_shutdown()
 
     # LOCAL_POSE methods
