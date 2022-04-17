@@ -126,8 +126,7 @@ class Drone_api:
     def start(self):
         if not self.__started:
             # LOCAL
-            while not rospy.is_shutdown() and (self.__current_local_pose == None
-                                               or self.__current_global_pose == None):
+            while not rospy.is_shutdown() and self.__current_local_pose == None:
                 rospy.sleep(0.2)
             self.__last_command_local_pose = PoseStamped()
             self.__last_command_global_pose = GeoPoseStamped()
@@ -139,21 +138,24 @@ class Drone_api:
                 list_x += self.__current_local_pose.pose.position.x
                 list_y += self.__current_local_pose.pose.position.y
                 list_z += self.__current_local_pose.pose.position.z
-                list_alt += self.__current_global_pose.altitude
                 rospy.sleep(0.2)
             if self.__redefine_zero_point:
                 self.__start_xyz = (list_x/10, list_y/10, list_z/10)
             else:
                 self.__start_xyz = (0, 0, 0)
-            self.__start_alt = list_alt/10
             # First "last_command"
             self.__last_command_local_pose.pose.position.x = self.__start_xyz[0]
             self.__last_command_local_pose.pose.position.y = self.__start_xyz[1]
             self.__last_command_local_pose.pose.position.z = self.__start_xyz[2] - 1
             self.__last_command_local_pose.pose.orientation.w = 1  # correct quaternion
-            self.__last_command_global_pose.pose.position.latitude = self.__current_global_pose.latitude
-            self.__last_command_global_pose.pose.position.longitude = self.__current_global_pose.longitude
-            self.__last_command_global_pose.pose.orientation.w = 1
+            if self.__current_global_pose != None:
+                for i in range(10):
+                    list_alt += self.__current_global_pose.altitude
+                    rospy.sleep(0.2)
+                self.__start_alt = list_alt/10
+                self.__last_command_global_pose.pose.position.latitude = self.__current_global_pose.latitude
+                self.__last_command_global_pose.pose.position.longitude = self.__current_global_pose.longitude
+                self.__last_command_global_pose.pose.orientation.w = 1
 
             self.__started = True
             if self.__thread_command is None or not self.__thread_command.is_alive():
