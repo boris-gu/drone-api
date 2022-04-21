@@ -6,17 +6,15 @@
 # https://aliyasineser.medium.com/opencv-camera-calibration-e9a48bdd1844
 
 import numpy as np
+import time
 import cv2
 import cv2.aruco as aruco
-import rospy
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
 
 FONT = cv2.FONT_HERSHEY_PLAIN
 
 
 class Calibration:
-    def __init__(self, square_size=0.05, width=9, height=6):
+    def __init__(self, square_size=0.0225, width=9, height=6):
         # Параметры таблицы
         self.__square_size = square_size  # Размер квадрата в метрах
         self.__width = width    # Кол-во пересечений квадратов по горизонтали
@@ -28,54 +26,40 @@ class Calibration:
         self.__dist_coef = None
 
     def setImages(self, period, num_of_images):
-        def callback(data):
-            bridge = CvBridge()
-            try:
-                frame = bridge.imgmsg_to_cv2(data, 'bgr8')
-            except CvBridgeError as e:
-                rospy.logerr(e)
-                return
-
-            if not(frame is None):
-                nonlocal last_time
-                now = rospy.Time.now()
-                passed = now - last_time
-                if passed < period:
-                    # TODO: Добавляем в кадр время
-                    if passed < rospy.Duration(0.25):
-                        frame = cv2.bitwise_not(frame)
-                    cv2.putText(frame, str(passed.secs), (20, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                                1, (255, 0, 60), 2, cv2.LINE_AA)
-                    cv2.putText(frame, str(len(self.__images)), (20, 60), cv2.FONT_HERSHEY_SIMPLEX,
-                                1, (255, 0, 60), 2, cv2.LINE_AA)
-                else:
-                    self.__images.append(frame)
-                    last_time = now
-                    rospy.loginfo(
-                        f'Added image {len(self.__images)}/{num_of_images}')
-                    cv2.putText(frame, str(len(self.__images)), (20, 60), cv2.FONT_HERSHEY_SIMPLEX,
-                                1, (255, 0, 60), 2, cv2.LINE_AA)
-
-                    if len(self.__images) == num_of_images:
-                        rospy.signal_shutdown('Maximum number of images')
-
-            try:
-                image_pub.publish(bridge.cv2_to_imgmsg(frame, 'bgr8'))
-            except CvBridgeError as e:
-                rospy.logerr(e)
-
-        rospy.init_node('ArUco_Calibration', anonymous=True,
-                        disable_signals=True)
-        period = rospy.Duration(period)
-        last_time = rospy.Time.now()
-
-        image_sub = rospy.Subscriber('/realsense/color/image_raw',
-                                     Image, callback, queue_size=20)
-        rospy.loginfo('Start Subscriber')
-        image_pub = rospy.Publisher('realsense/aruco/calibration_img',
-                                    Image, queue_size=20)
-        rospy.loginfo('Start Publisher')
-        rospy.spin()
+        cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+        last_time = time.time()
+        if not cap.isOpened():
+            print("Cannot open camera")
+            exit()
+        # def callback(data):
+        while len(self.__images) < num_of_images:
+            ret, frame = cap.read()
+            if not ret:
+                print("Can't receive frame (stream end?). Exiting ...")
+                break
+            now = time.time()
+            passed = now - last_time
+            if passed < period:
+                # TODO: Добавляем в кадр время
+                if passed < 0.25:
+                    frame = cv2.bitwise_not(frame)
+                cv2.putText(frame, str(passed), (20, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                            1, (255, 0, 60), 2, cv2.LINE_AA)
+                cv2.putText(frame, str(len(self.__images)), (20, 60), cv2.FONT_HERSHEY_SIMPLEX,
+                            1, (255, 0, 60), 2, cv2.LINE_AA)
+            else:
+                self.__images.append(frame)
+                last_time = time.time()
+                print(f'Added image {len(self.__images)}/{num_of_images}')
+                cv2.putText(frame, str(len(self.__images)), (20, 60), cv2.FONT_HERSHEY_SIMPLEX,
+                            1, (255, 0, 60), 2, cv2.LINE_AA)
+            cv2.imshow('frame', frame)
+            if cv2.waitKey(1) != -1:
+                break
+        cap.release()
+        cv2.destroyAllWindows()
 
     def calibrate(self):
         criteria = (cv2.TERM_CRITERIA_EPS +
@@ -133,6 +117,6 @@ class Calibration:
 
 if __name__ == '__main__':
     clb = Calibration()
-    clb.setImages(10, 40)
+    clb.setImages(3, 40)
     clb.calibrate()
-    clb.saveCoefficients('gardener_calibration.yaml')
+    clb.saveCoefficients('calibration.yaml')
