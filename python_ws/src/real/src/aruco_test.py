@@ -4,17 +4,17 @@
 #  Зависнуть у маркера
 # =====================
 
-from turtle import circle
 import numpy as np
-import rospy
 import cv2
 import cv2.aruco as aruco
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
+import time
 from aruco_calibration import Calibration as clb
-from drone_api import *
-from math import pi, sqrt, sin, cos, atan2
+from drone_api import *  # закомментировать для тестирования без ROS
 
+fps = 30.0
+image_size = (848, 480)
+time_now = time.gmtime(time.time())
+video_file = f'{time.strftime("%Y.%m.%d %H:%M:%S", time.gmtime())}.avi'
 
 FONT = cv2.FONT_HERSHEY_PLAIN
 
@@ -28,9 +28,13 @@ aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 parameters = aruco.DetectorParameters_create()
 
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
-#cap.set(cv2.CAP_PROP_FPS, 24)
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+# cap.set(cv2.CAP_PROP_EXPOSURE, 0.5) # работает не везде
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, image_size[0])
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size[1])
+cap.set(cv2.CAP_PROP_FPS, fps)
+out = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc(*'MJPG'),
+                      fps, image_size)
 
 if not cap.isOpened():
     print("Cannot open camera")
@@ -60,6 +64,7 @@ while True:
 
         x, y, z, roll, pitch, yaw = Camera_api.marker_cam_pose(rvec[0][0],
                                                                tvec[0][0])
+        # x, y, z, roll, pitch, yaw = (1, 2, 3, 4, 5, 6)  # для отладки без ROS
         marker_pose = [x, y, z, roll, pitch, yaw]
         # Белая обводка и черный текст
         print(toFixed(x, 3), toFixed(y, 3), toFixed(z, 3))
@@ -87,8 +92,9 @@ while True:
         cv2.putText(frame, 'NOT FOUND', (20, 30), FONT,
                     1, (0, 0, 0), 1, cv2.LINE_AA)
 
-    cv2.imshow('frame', frame)
-    if cv2.waitKey(1) != -1:
-        break
+    out.write(frame)
+    # cv2.imshow('frame', frame) # для отладки. На headless-дистрибутивах крашится
+    # if cv2.waitKey(1) != -1:
+    #    break
 cap.release()
 cv2.destroyAllWindows()
