@@ -50,7 +50,7 @@ cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, image_size[0])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size[1])
 cap.set(cv2.CAP_PROP_FPS, fps)
-if args.write():
+if args.write:
     out = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc(*'MJPG'),
                           fps, image_size)
 
