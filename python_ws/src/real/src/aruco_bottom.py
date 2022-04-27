@@ -107,6 +107,7 @@ cir = Circle()
 while not drone.is_shutdown():
     # Get ArUco pose
     ret, frame = cap.read()
+    frame = cv2.flip(frame, -1)
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
