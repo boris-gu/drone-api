@@ -27,8 +27,6 @@ class Calibration:
 
     def setImages(self, period, num_of_images):
         cap = cv2.VideoCapture(0)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         last_time = time.time()
         if not cap.isOpened():
             print("Cannot open camera")
