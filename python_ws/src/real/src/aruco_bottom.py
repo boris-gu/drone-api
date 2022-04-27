@@ -181,5 +181,5 @@ rospy.loginfo('Drone disarmed')
 cap.release()
 if args.write:
     out.release()
-    rospy.loginfo(f'Create{video_file}')
+    rospy.loginfo(f'Create {video_file}')
 cv2.destroyAllWindows()
