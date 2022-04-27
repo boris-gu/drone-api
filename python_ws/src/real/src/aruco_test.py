@@ -7,7 +7,6 @@
 import numpy as np
 import cv2
 import cv2.aruco as aruco
-import time
 from aruco_calibration import Calibration as clb
 import argparse
 
@@ -35,9 +34,6 @@ def toFixed(numObj, digits=0):
     return f'{numObj:.{digits}f}'
 
 
-time_now = time.gmtime(time.time())
-video_file = f'{time.strftime("%Y.%m.%d %H:%M:%S", time.gmtime())}.avi'
-
 FONT = cv2.FONT_HERSHEY_PLAIN
 
 camera_matrix, dist_coef = clb.loadCoefficients('calibration_save.yaml')
@@ -49,11 +45,14 @@ if not cap.isOpened():
     print("Cannot open camera")
     exit()
 if args.write:
+    import time
+    time_now = time.gmtime(time.time())
+    video_file = f'{time.strftime("%Y.%m.%d %H:%M:%S", time.gmtime())}.avi'
     while True:
         ret, frame = cap.read()
         if ret:
             image_size = frame.shape[:2]
-            print(f'Resolution: {image_size[0]}x{image_size[1]}')
+            print(f'Resolution: {image_size[1]}x{image_size[0]}')
             break
     fps = 25.0
     out = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc(*'MJPG'),
