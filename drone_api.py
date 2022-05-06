@@ -12,7 +12,7 @@ from pygeodesy.geoids import GeoidPGM
 
 
 class Drone_api:
-    def __init__(self, allowable_error: float = 0.5, redefine_zero_point: bool = False):
+    def __init__(self, allowable_error: float = 0.5, redefine_zero_point: bool = False, disable_signals: bool = False):
         # GENERAL attributes
         self.__started = False
         self.__type_of_move = 'LOCAL_POSE'  # 'LOCAL_POSE' or 'GLOBAL_POSE' or 'VELOCITY'
@@ -37,7 +37,8 @@ class Drone_api:
         # VELOCITY attributes
         self.__last_command_vel = Twist()
 
-        rospy.init_node('drone_offb', anonymous=True)
+        rospy.init_node('drone_offb', anonymous=True,
+                        disable_signals=disable_signals)
         # get state, position, set position, velocity, mode and arm
         self.__state_sub = rospy.Subscriber('mavros/state', State,
                                             self.__state_cb, queue_size=10)
