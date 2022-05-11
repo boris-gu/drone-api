@@ -19,6 +19,7 @@ class Drone_api:
         self.__current_state = State()
         self.__thread_command = None
         self.__yaw_head_first = False
+        self.__one_offb = False  # FIX
 
         # LOCAL_POSE attributes
         self.__allowable_error = allowable_error  # m
@@ -80,7 +81,8 @@ class Drone_api:
                 # OFFBOARD and ARM
                 if now - last_request > rospy.Duration(3):
                     last_request = now
-                    if self.__current_state.mode != 'OFFBOARD':
+                    if self.__current_state.mode != 'OFFBOARD' and not self.__one_offb:
+                        self.__one_offb = True
                         self.__set_mode_client(base_mode=0,
                                                custom_mode='OFFBOARD')
                     elif not self.__current_state.armed:
