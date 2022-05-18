@@ -12,13 +12,20 @@ from pygeodesy.geoids import GeoidPGM
 
 
 class Drone_api:
-    def __init__(self, allowable_error: float = 0.5, redefine_zero_point: bool = False, disable_signals: bool = False):
+    def __init__(self, allowable_error: float = 0.5,
+                 # Переопределять нулевую точку после каждого start()
+                 redefine_zero_point: bool = False,
+                 # OFFBOARD включается не сам, а через RC или QGC (сначала нужно выполнить start())
+                 offb_switch: bool = False,
+                 # ROS не перехватывает Ctrl+C
+                 disable_signals: bool = False):
         # GENERAL attributes
         self.__started = False
         self.__type_of_move = 'LOCAL_POSE'  # 'LOCAL_POSE' or 'GLOBAL_POSE' or 'VELOCITY'
         self.__current_state = State()
         self.__thread_command = None
         self.__yaw_head_first = False
+        self.__offb_switch = offb_switch
 
         # LOCAL_POSE attributes
         self.__allowable_error = allowable_error  # m
@@ -80,12 +87,16 @@ class Drone_api:
                 # OFFBOARD and ARM
                 if now - last_request > rospy.Duration(3):
                     last_request = now
-                    if self.__current_state.mode != 'OFFBOARD':
-                        self.__set_mode_client(base_mode=0,
-                                               custom_mode='OFFBOARD')
-                    elif not self.__current_state.armed:
-                        # fixme: дрон бесконечно дизармится, если не взлететь
-                        self.__arming_client(True)
+                    if self.__offb_switch:
+                        if self.__current_state.mode == 'OFFBOARD' and not self.__current_state.armed:
+                            self.__arming_client(True)
+                    else:
+                        if self.__current_state.mode != 'OFFBOARD':
+                            self.__set_mode_client(base_mode=0,
+                                                   custom_mode='OFFBOARD')
+                        elif not self.__current_state.armed:
+                            # fixme: дрон бесконечно дизармится, если не взлететь
+                            self.__arming_client(True)
                 # CONTROL
                 if self.__type_of_move == 'LOCAL_POSE':
                     delta_x = (self.__last_command_local_pose.pose.position.x
